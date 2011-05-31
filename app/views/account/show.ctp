@@ -4,7 +4,7 @@
 <?php endif; ?>
 </div>
 
-<h2><?php echo $candy->avatar($user); ?> <?php e(h($candy->format_username($user['User']))); ?></h2>
+<h2><?php echo $candy->avatar($user,array('size' => 72)); ?> <?php e(h($candy->format_username($user['User']))); ?></h2>
 
 <div class="splitcontentleft">
 <ul>
@@ -65,8 +65,8 @@
 </div>
 
 <p class="other-formats">
-  <?php __("'Also available in:'"); ?>
-  <?php echo $html->link('Atom', array('controller'=>'projects','action','activity','user_id'=>$user['User']['id'], '?'=>array_merge($this->params['url'], array('key'=>$user['RssToken']['value'], 'format'=>'atom', 'from'=>null, 'url'=>null))), array('class' => 'feed')); ?>
+  <?php __("Also available in:"); ?>
+  <?php echo $html->link('Atom', array('controller'=>'projects','action','activity','user_id'=>$user['User']['id'], '?'=>array_merge($this->params['url'], array('key'=>$currentuser['RssToken']['value'], 'format'=>'atom', 'from'=>null, 'url'=>null))), array('class' => 'feed')); ?>
 </p>
 
 <?php endif; ?>

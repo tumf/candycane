@@ -20,6 +20,7 @@ class IssuesController extends AppController
   var $components = array(
     'RequestHandler',
     'Queries',
+    'Mailer'
   );
   var $_query;
   var $_project;
@@ -268,6 +269,7 @@ class IssuesController extends AppController
           $this->Issue->attach_files($this->params['form'], $this->current_user);
         }
         $this->Session->setFlash(__('Successful update.', true), 'default', array('class'=>'flash flash_notice'));
+        $this->Mailer->deliver_issue_add($this->Issue);
         # Mailer.deliver_issue_add(@issue) if Setting.notified_events.include?('issue_added')
         if(!empty($this->params['form']['continue'])) {
           $this->redirect('/projects/'.$this->_project['Project']['identifier'].'/issues/add/tracker_id:'.$this->data['Issue']['tracker_id']);
@@ -325,7 +327,7 @@ class IssuesController extends AppController
       $notes = $this->_get_param('notes');
     }
     unset($this->data['Issue']['notes']);
-    $this->Issue->init_journal($issue, $this->current_user, $notes);
+    $journal = $this->Issue->init_journal($issue, $this->current_user, $notes);
     $this->Issue->Journal->available_custom_fields = $this->Issue->cached_available_custom_fields();
     # User can change issue attributes only if he has :edit permission or if a workflow transition is allowed
     $edit_allowed = $this->User->is_allowed_to($this->current_user, ':edit_issues', $this->_project);
@@ -394,7 +396,7 @@ class IssuesController extends AppController
         if($this->Issue->actually_changed) {
           # Only send notification if something was actually changed
           $this->Session->setFlash(__('Successful update.', true), 'default', array('class'=>'flash flash_notice'));
-          # TODO : Mailer.deliver_issue_edit(journal) if Setting.notified_events.include?('issue_updated')
+          $this->Mailer->deliver_issue_edit($journal,$this->Issue);
         }
         if(!empty($this->params['url']['back_to'])) {
           $this->redirect($this->params['url']['back_to']);
@@ -443,7 +445,7 @@ class IssuesController extends AppController
   # Bulk edit a set of issues
   function bulk_edit() {
     $role_id = $this->User->role_for_project($this->current_user, $this->_project);
-    if(!$this->RequestHandler->isPost() && !empty($this->data)) {
+    if($this->RequestHandler->isPost() && !empty($this->data)) {
       $status_id = $this->_get_param('status_id');
       $priotity_id = $this->_get_param('priority_id');
       $assigned_to_id = $this->_get_param('assigned_to_id');
@@ -928,16 +930,22 @@ class IssuesController extends AppController
   function sidebar_queries() {
     # User can see public queries and his own queries
     $user_id = 0;
-    if (!$this->current_user || !$this->current_user['logged']) {
+    if ($this->current_user && $this->current_user['logged']) {
       $user_id = $this->current_user['id'];
     }
     $visible = array();
-    $visible[] = array("Query.is_public = ? OR Query.user_id = ?" => array(true, $user_id));
+    $visible[] = array('OR' => array(
+        'Query.is_public' => true,
+        'Query.user_id' => $user_id
+    ));
     # Project specific queries and global queries
     if(empty($this->_project)) {
       $visible[] = array("Query.project_id" => null);
     } else {
-      $visible[] = array("OR"=>array("Query.project_id" => null, "Query.project_id" => $this->_project['Project']['id']));
+      $visible[] = array( 'OR' => array(
+          'Query.project_id' => null,
+          'Query.project_id' => $this->_project['Project']['id']
+      ));
     }
     $sidebar_queries = $this->Query->find('all', array( 
                               'order' => "Query.name ASC",

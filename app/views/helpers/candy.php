@@ -187,7 +187,8 @@ class CandyHelper extends AppHelper
       $options['class'] = '';
     }
     $options['class'] .= ' issue';
-    if (isset($issue['closed'])) {
+    
+    if (isset($issue['Status']['is_closed']) && $issue['Status']['is_closed']) {
       $options['class'] .= ' closed';
     }
 
@@ -1153,8 +1154,16 @@ function breadcrumb($args)
 
   function include_calendar_headers_tags() {
     $current_language = Configure::read('Config.language');
+    $lang = 'en';
+    $map = array(
+        'eng' => 'en',
+        'jpn' => 'ja',
+    );
+    if (isset($map[$current_language])) {
+        $lang = $map[$current_language];
+    }
     $this->AppAjax->Javascript->link('calendar/calendar.js', false);
-    $this->AppAjax->Javascript->link("calendar/lang/calendar-$current_language.js", false);
+    $this->AppAjax->Javascript->link("calendar/lang/calendar-{$lang}.js", false);
     $this->AppAjax->Javascript->link('calendar/calendar-setup', false);
     $this->Html->css('calendar.css', null, array(), false);
   }
@@ -1185,10 +1194,10 @@ function breadcrumb($args)
         $user = $user['User'];
       }
 
-      if (empty($user['email'])) {
+      if (empty($user['mail'])) {
         $email = null;
       } else {
-        $email = $user['email'];
+        $email = $user['mail'];
       }
 
 #      if user.respond_to?(:mail)
@@ -1214,7 +1223,7 @@ function breadcrumb($args)
         $options['default'] = htmlspecialchars($options['default'], ENT_QUOTES);
       }
 
-      $url = "http://www.gravatar.com/avatar.php?gravatar_id=#{email_hash}";
+      $url = "http://www.gravatar.com/avatar.php?gravatar_id=${email_hash}";
 
       foreach (array('rating', 'size', 'default') as $opt) {
         if (!empty($opt)) {

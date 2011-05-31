@@ -133,17 +133,18 @@ class ProjectsController extends AppController
     $this->set('enabled_module_names', $enabled_module_names);
 
     if(!empty($this->data)) {
-      if($this->Project->save($this->data, true, array('name', 'description', 'parent_id', 'identifier', 'homepage', 'is_public'))) {
-        //foreach($this->data['Project']['tracker_ids'] as $tracker_id) {
-        //}
-        $this->data['Tracker']['Tracker'] = array_filter($this->data['Project']['Tracker']);
-        foreach($this->data['Project']['issue_custom_field_ids'] as $custom_field_id) {
-          $this->CustomFieldsProject->save(array('custom_field_id'=>$custom_field_id, 'project_id'=>$this->data->id));
+      $this->data['Tracker']['Tracker'] = array_filter($this->data['Project']['Tracker']);
+      if($this->Project->save($this->data, true, array('name', 'description', 'parent_id', 'identifier', 'homepage', 'is_public'))) {        
+        if (isset($this->data['Project']['issue_custom_field_ids'])){
+          foreach($this->data['Project']['issue_custom_field_ids'] as $custom_field_id) {
+            $this->CustomFieldsProject->save(array('custom_field_id'=>$custom_field_id, 'project_id'=>$this->data->id));
+          }
         }
-        foreach($this->data['Project']['enabledModules'] as $enabledModule) {
-          $this->EnabledModule->save(array('name'=>$enabledModule, 'project_id'=>$this->data->id));
+        foreach(array_filter($this->data['Project']['EnabledModule']) as $enabledModule) {
+          $this->EnabledModule->create();
+          $this->EnabledModule->save(array('name'=>$enabledModule, 'project_id'=>$this->Project->id));
         }
-        $this->Session->setFlash(__('Successful create.'));
+        $this->Session->setFlash(__('Successful creation.',true), 'default', array('class'=>'flash notice'));
         $this->redirect(array('controller'=>'admin', 'action'=>'projects'));
       }
     }
@@ -207,15 +208,16 @@ class ProjectsController extends AppController
     $cond = $this->Project->project_condition($this->Setting->display_subprojects_issues, $this->data['Project']);
 
     foreach($this->data['Tracker'] as $key=>$tracker) {
-      $cond_open = $cond;
+      $cond_open = $cond_all = $cond;
       $cond_open['Status.is_closed'] = false;
       $cond_open['Issue.tracker_id'] = $tracker['id'];
       $open_issues_by_tracker = $this->Issue->find('count', array(
         'conditions' => $cond_open,
         'group' => 'tracker_id',
       ));
+      $cond_all['Issue.tracker_id'] = $tracker['id'];
       $total_issues_by_tracker = $this->Issue->find('count', array(
-        'conditions' => $cond,
+        'conditions' => $cond_all,
         'group' => 'tracker_id',
       ));
 
@@ -344,17 +346,17 @@ class ProjectsController extends AppController
     }
     $this->redirect(aa('action','settings','id',$this->params['project_id'],'?','tab=modules'));
   }
-#
-#  def archive
-#    @project.archive if request.post? && @project.active?
-#    redirect_to :controller => 'admin', :action => 'projects'
-#  end
-#  
-#  def unarchive
-#    @project.unarchive if request.post? && !@project.active?
-#    redirect_to :controller => 'admin', :action => 'projects'
-#  end
-#  
+
+  function archive() {
+      $this->Project->archive($this->_project['Project']['id']);
+      $this->redirect(array('controller' => 'admin', 'action' => 'projects'));
+  }  
+
+  function unarchive() {
+      $this->Project->unarchive($this->_project['Project']['id']);
+      $this->redirect(array('controller' => 'admin', 'action' => 'projects'));      
+  }
+
   function destroy()
   {
     if($this->RequestHandler->isPost()) {
@@ -600,6 +602,7 @@ class ProjectsController extends AppController
 #  end
   function roadmap()
   {
+    usort($this->data['Version'],array($this->Version,'sort'));
     $trackers = $this->Tracker->find('all', array(
       'conditions' => array('is_in_roadmap' => true)
     ));
@@ -650,11 +653,15 @@ class ProjectsController extends AppController
     $this->set('author', $author);
 
     $with_subprojects = ($this->_get_param('with_subprojects')!=null) ? $this->Setting->display_subprojects_issues : ($this->_get_param('with_subprojects') == '1');
-    $this->Fetcher->fetch($this->current_user, array(
-      'projects' => $this->data,
+    $condition = array(
+      //'project' => $this->_project,
       'with_subprojects' => $with_subprojects,
       'author' => $author['User'],
-    ));
+    );
+    if (isset($this->_project)) {
+        $condition['project'] = $this->_project;
+    }
+    $this->Fetcher->fetch($this->current_user,$condition);
     $scope = $this->Fetcher->scope_select('_callback_activity_scope_select');
     if (empty($scope)) {
       $this->Fetcher->set_scope(empty($author) ? 'default' : 'all');
@@ -670,7 +677,9 @@ class ProjectsController extends AppController
 
     $this->set('activity_event_types', $this->Fetcher->event_types());
     $this->set('activity_scope', $this->Fetcher->scope);
-    $this->set('active_children', $this->Project->active_children($this->_project['Project']['id']));
+    if (isset($this->_project)) {
+      $this->set('active_children', $this->Project->active_children($this->_project['Project']['id']));
+    }
     $this->set('with_subprojects', $with_subprojects);
     $this->set('param_user_id', $this->_get_param('user_id'));
     $this->set('rss_token', $this->Project->User->rss_key($this->current_user['id']));

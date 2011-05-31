@@ -46,9 +46,7 @@ class UsersController extends AppController
   {
     if ($this->data) {
       if ($this->User->save($this->data)) {
-#        flash[:notice] = l(:notice_successful_update)
-#        # Give a string to redirect_to otherwise it would use status param as the response code
-#        redirect_to(url_for(:action => 'list', :status => params[:status], :page => params[:page]))
+        $this->Session->setFlash(__('Successful update.', true), 'default', array('class'=>'flash flash_notice'));
         $this->redirect('list');
         return;
       }
@@ -148,21 +146,19 @@ class UsersController extends AppController
     $status_counts = $this->User->find('all',
       array(
         'group' => array('status'),
-        'fields' => array('COUNT(*) as cnt'),
+        'fields' => array('User.status', 'COUNT(*) as cnt'),
       )
     );
-
-    foreach (array(1, 2, 3) as $key) {
-      if (!isset($status_counts[$key][0]['cnt'])) {
-        $status_counts[$key][0]['cnt'] = 0;
-      }
+    $counts = array(0,0,0,0);
+    foreach ($status_counts as $row) {
+      $counts[$row['User']['status']]=$row[0]['cnt'];
     }
 
     $status_option = array(
       '' => __('all', true),
-      1  => __('active', true) . ' (' . (int)$status_counts[1][0]['cnt'] . ')',
-      2  => __('registered', true) . ' (' . (int)$status_counts[2][0]['cnt'] . ')',
-      3  => __('locked', true) . ' (' . (int)$status_counts[3][0]['cnt'] . ')',
+      1  => __('active', true) . ' (' . (int)$counts[1] . ')',
+      2  => __('registered', true) . ' (' . (int)$counts[2] . ')',
+      3  => __('locked', true) . ' (' . (int)$counts[3] . ')',
     );
 
     $this->set('status_option', $status_option);
@@ -189,11 +185,18 @@ class UsersController extends AppController
       $this->data['User']['created_on'] = date('Y-m-d H:i:s'); // @todo model de yarubeki
       if ($this->User->save($this->data)) {
         #        Mailer.deliver_account_information(@user, params[:password]) if params[:send_information]
-        #        flash[:notice] = l(:notice_successful_create)
-        #        redirect_to :action => 'list'
+        $this->Session->setFlash(__('Successful creation.', true), 'default', array('class'=>'flash flash_notice'));
         $this->redirect('/users/index');
       }
     }
+    $user = $this->User->create(array(
+        'id' => '',
+        'login' => '',
+        'firstname' => '',
+        'lastname' => '',
+        'mail' => '',
+    ));
+    $this->set('user',$user);
     #    @auth_sources = AuthSource.find(:all)
   }
   function allowed_to() {

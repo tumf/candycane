@@ -18,7 +18,7 @@ class Project extends AppModel
 //    ),
 //  );
   var $hasMany = array(
-    'Version',
+    'Version' => array('order' => 'Version.effective_date desc'),
     'TimeEntry',
     'IssueCategory'=>array('dependent' => true, 'order' => "IssueCategory.name"),
     'EnabledModule',
@@ -362,20 +362,19 @@ class Project extends AppModel
   function is_active($project) {
     return $project['Project']['status'] == PROJECT_STATUS_ACTIVE;
   }
+  
+  function archive($id){
+    $this->id = $id;
+    foreach ($this->active_children($id) as $row) {
+      $this->archive($row['id']);
+    }
+    $this->saveField('status',PROJECT_ARCHIVED);
+  }
 
-#  
-#  def archive
-#    # Archive subprojects if any
-#    children.each do |subproject|
-#      subproject.archive
-#    end
-#    update_attribute :status, STATUS_ARCHIVED
-#  end
-#  
-#  def unarchive
-#    return false if parent && !parent.active?
-#    update_attribute :status, STATUS_ACTIVE
-#  end
+  function unarchive($id){
+    $this->id = $id;
+    $this->saveField('status',PROJECT_STATUS_ACTIVE);      
+  }
 #  
 #  def active_children
 #    children.select {|child| child.active?}
@@ -456,9 +455,24 @@ class Project extends AppModel
 
 #  
 #  # Returns the mail adresses of users that should be always notified on project events
-#  def recipients
-#    members.select {|m| m.mail_notification? || m.user.mail_notification?}.collect {|m| m.user.mail}
-#  end
+  function recipients(){
+     return $this->Member->find(
+         'list',
+         array(
+            'fields' => array('User.mail'),
+            'conditions' => array(
+                'AND' => array(
+                'Member.project_id' => $this->id, 
+                'OR' => array(
+                    'User.mail_notification' => 1,
+                    'Member.mail_notification' => 1
+                )
+                )
+            ),
+            'recursive' => 2
+         )
+     );
+  }
 #  
 #  # Returns an array of all custom fields enabled for project issues
 #  # (explictly associated custom fields and custom fields enabled for all projects)

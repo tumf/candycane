@@ -154,17 +154,15 @@ class Version extends AppModel
     $result['start_date'] = $result['effective_date'];
     $result['due_date'] = $result['effective_date'];
 
-    $this->bindModel(array('hasOne'=>array('TimeEntry'=>array())));
-    $time_entries = $this->TimeEntry->find('all', array(
+    $time_entry = ClassRegistry::init('TimeEntry');
+    $time_entry->bindModel(array('belongsTo' => array('Issue')));
+    $time_entries = $time_entry->find('first', array(
+      'fields' => array('sum(hours) as sum' ),
       'conditions'=>array(
+          'Issue.fixed_version_id' => $result['id']
         ),
     ));
-    $this->unbindModel(array('hasOne'=>array('TimeEntry')), false);
-    $sum = 0;
-    foreach($time_entries as $entry) {
-      $sum += $entry['TimeEntry']['hours'];
-    }
-    $result['spent_hours'] = $sum;
+    $result['spent_hours'] = $time_entries[0]['sum'];
     $result['open_issues_count'] = $this->FixedIssue->find('count', array(
       'conditions'=>array(
         'fixed_version_id'=>$result['id'],
@@ -193,7 +191,7 @@ class Version extends AppModel
       ),
       'recursive' => 0
      ));
-     $result['completed_pourcent'] = $result['closed_issues_count'] * 100 + $sum[0]['sum'] / ($result['open_issues_count'] + $result['closed_issues_count']);
+     $result['completed_pourcent'] = ($result['closed_issues_count'] * 100 + $sum[0]['sum']) / ($result['open_issues_count'] + $result['closed_issues_count']);
    }
 #  def completed_pourcent
 #    if fixed_issues.count == 0
@@ -219,10 +217,10 @@ class Version extends AppModel
 #    end
 #  end
     
-    
+    //effective_date && (effective_date <= Date.today) && (open_issues_count == 0)
     if (empty($result['effective_date'])) {
       $result['completed'] = false;
-    } else if (strtotime($result['effective_date']) <= time()) {
+    } else if (strtotime($result['effective_date']) >= time()) {
       $result['completed'] = false;
     } else {
       $result['completed'] = ($result['open_issues_count'] == 0);
@@ -230,12 +228,13 @@ class Version extends AppModel
 #  def estimated_hours
 #    @estimated_hours ||= fixed_issues.sum(:estimated_hours).to_f
 #  end
-    $issues = $this->FixedIssue->find('all', array('fields'=>'estimated_hours'));
-    $sum = 0;
-    foreach($issues as $issue) {
-      $sum += $issue['FixedIssue']['estimated_hours'];
-    }
-    $result['estimated_hours'] = $sum;
+    $issues = $this->FixedIssue->find('first', array(
+        'fields'=>'sum(estimated_hours) as sum',
+        'conditions' => array(
+            'FixedIssue.fixed_version_id' => $result['id']
+        )
+        ));
+    $result['estimated_hours'] = $issues[0]['sum'];
 
 #  def spent_hours
 #    @spent_hours ||= TimeEntry.sum(:hours, :include => :issue, :conditions => ["#{Issue.table_name}.fixed_version_id = ?", id]).to_f
@@ -249,6 +248,10 @@ class Version extends AppModel
 #  end
     return $result;
   }
-
+ 
+  function sort($a,$b){
+      
+      return (strtotime($a['effective_date']) > strtotime($b['effective_date'])) ? -1:1;
+  }
 }
 
