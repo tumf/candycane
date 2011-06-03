@@ -837,6 +837,7 @@ CREATE TABLE IF NOT EXISTS `settings` (
 --
 -- テーブルのデータをダンプしています `settings`
 --
+INSERT INTO (name, value) VALUES ('ui_theme', 'farend_basic');
 
 
 -- --------------------------------------------------------
