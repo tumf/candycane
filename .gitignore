@@ -1,7 +1,9 @@
 app/tmp/cache/models/cake_model_default_*
 app/tmp/cache/persistent/cake_core_*
+app/tmp/cache/views/*
 app/tmp/logs/debug.log
 app/tmp/logs/error.log
+app/tmp/tests/*
 .cache/
 .project
 .settings/
