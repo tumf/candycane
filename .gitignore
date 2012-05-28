@@ -1,8 +1,23 @@
-app/tmp/cache/models/cake_model_default_*
-app/tmp/cache/persistent/cake_core_*
-app/tmp/logs/debug.log
-app/tmp/logs/error.log
-.cache/
+## Configuration and Temporary files
+app/Config/database.php
+app/tmp/cache/models/*
+app/tmp/cache/persistent/*
+app/tmp/cache/*
+app/tmp/logs/*
+app/tmp/tests/*
+app/files/*
+
+## Simpletest
+vendors/simpletest
+
+## IDE files and folders
+.cache
 .project
-.settings/
-app/config/database.php
+.settings
+nbproject
+.idea
+
+## Allow 'empty' files
+!empty
+
+.DS_Store
