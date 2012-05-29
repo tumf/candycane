@@ -1,0 +1,7 @@
+# rsync exclude
+.git
+CVS
+.svn
+/app/Plugin/install
+/app/Config/database.php
+

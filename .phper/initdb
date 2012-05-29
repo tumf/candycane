@@ -1,0 +1,9 @@
+# run after inititalize database
+cp app/Config/database.php.install  app/Config/database.php
+sed -i.bak -e "s/{default_database}/${DBNAME}/g"  app/Config/database.php
+sed -i.bak -e "s/{default_host}/${DBHOST}/g"  app/Config/database.php
+sed -i.bak -e "s/{default_login}/${DBUSER}/g"  app/Config/database.php
+sed -i.bak -e "s/{default_password}/${DBPASSWORD}/g"  app/Config/database.php
+sed -i.bak -e "s/{default_prefix}//g"  app/Config/database.php
+sed -i.bak -e "s/{default_port}//g"  app/Config/database.php
+rm app/Config/database.php.bak
